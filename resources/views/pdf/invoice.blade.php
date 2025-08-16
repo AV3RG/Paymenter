@@ -6,8 +6,17 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{{ __('invoices.invoice', ['id' => $invoice->number]) }}</title>
     <style>
+
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         body {
             font-family:
+                'DejaVu Sans',
                 system-ui,
                 -apple-system,
                 /* Firefox supports this but not yet `system-ui` */
