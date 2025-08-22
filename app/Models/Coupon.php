@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use OwenIt\Auditing\Contracts\Auditable;
 
-class Coupon extends Model implements Auditable
+class Coupon extends Model
 {
-    use \App\Models\Traits\Auditable, HasFactory;
+    use HasFactory;
 
     protected $fillable = [
         'type',
@@ -33,7 +33,13 @@ class Coupon extends Model implements Auditable
      */
     public function products()
     {
-        return $this->belongsToMany(Product::class, 'coupon_products');
+        return $this->belongsToMany(Product::class, 'coupon_products')
+            ->withPivot('plan_id');
+    }
+
+    public function couponProducts()
+    {
+        return $this->hasMany(CouponProduct::class);
     }
 
     public function services()

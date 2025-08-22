@@ -7,15 +7,17 @@ use App\Admin\Resources\CouponResource\Pages\EditCoupon;
 use App\Admin\Resources\CouponResource\Pages\ListCoupons;
 use App\Admin\Resources\CouponResource\RelationManagers\ServicesRelationManager;
 use App\Models\Coupon;
+use App\Models\Product;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -24,16 +26,20 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'ri-coupon-line';
+    protected static ?string $navigationIcon = 'ri-coupon-line';
 
-    protected static string|\BackedEnum|null $activeNavigationIcon = 'ri-coupon-fill';
+    protected static ?string $activeNavigationIcon = 'ri-coupon-fill';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
-
-    public static function form(Schema $schema): Schema
+    // Use method override to avoid property type conflicts
+    public static function getNavigationGroup(): ?string
     {
-        return $schema
-            ->components([
+        return 'Configuration';
+    }
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
                 TextInput::make('code')
                     ->label('Code')
                     ->required()
@@ -95,13 +101,41 @@ class CouponResource extends Resource
                 DatePicker::make('expires_at')
                     ->label('Expires At'),
 
-                Select::make('products')
-                    ->label('Products')
-                    ->relationship('products', 'name')
-                    ->multiple()
-                    ->preload()
-                    ->placeholder('Select the products that this coupon applies to')
-                    ->hint('Leave empty to apply the coupon to all products'),
+                Repeater::make('couponProducts')
+                    ->label('Product/Plan restrictions')
+                    ->relationship()
+                    ->schema([
+                        Select::make('product_id')
+                            ->label('Product')
+                            ->relationship('product', 'name')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, $set) {
+                                $set('plan_id', null);
+                            })
+                            ->preload(),
+                        Select::make('plan_id')
+                            ->label('Plan (optional)')
+                            ->options(function (Get $get) {
+                                $productId = $get('product_id');
+                                if (!$productId) {
+                                    return [];
+                                }
+                                
+                                $product = Product::find($productId);
+                                if (!$product) {
+                                    return [];
+                                }
+                                
+                                return $product->plans->pluck('name', 'id')->toArray();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->hint('If empty, coupon applies to all plans of the product'),
+                    ])
+                    ->grid(2)
+                    ->addActionLabel('Add restriction')
+                    ->hint('Leave empty to apply to all products and plans'),
             ]);
     }
 
@@ -114,14 +148,6 @@ class CouponResource extends Resource
             ])
             ->filters([
                 //
-            ])
-            ->recordActions([
-                EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

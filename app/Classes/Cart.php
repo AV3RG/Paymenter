@@ -100,8 +100,18 @@ class Cart
 
         $wasSuccessful = false;
         $items = self::get()->map(function ($item) use ($coupon, &$wasSuccessful) {
-            if ($coupon->products->where('id', $item->product->id)->isEmpty() && $coupon->products->isNotEmpty()) {
-                return (object) $item;
+            // If coupon has restrictions, require a matching product and optional plan_id
+            if ($coupon->products->isNotEmpty()) {
+                $matches = $coupon->products->first(function ($product) use ($item) {
+                    if ($product->id !== $item->product->id) {
+                        return false;
+                    }
+                    $pivotPlanId = $product->pivot->plan_id ?? null;
+                    return $pivotPlanId === null || $pivotPlanId == $item->plan->id;
+                });
+                if (!$matches) {
+                    return (object) $item;
+                }
             }
             $wasSuccessful = true;
             $discount = 0;
